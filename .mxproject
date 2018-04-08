@@ -1,7 +1,7 @@
 [PreviousGenFiles]
-HeaderPath=C:/Users/54391/Documents/GitHub/MotionControl/MotionControl/Inc
+HeaderPath=C:/Users/54391/Documents/GitHub/MotionControl/Inc
 HeaderFiles=gpio.h;can.h;usart.h;stm32f1xx_it.h;stm32f1xx_hal_conf.h;main.h;
-SourcePath=C:/Users/54391/Documents/GitHub/MotionControl/MotionControl/Src
+SourcePath=C:/Users/54391/Documents/GitHub/MotionControl/Src
 SourceFiles=gpio.h;can.h;usart.h;stm32f1xx_it.h;stm32f1xx_hal_conf.h;main.h;gpio.c;can.c;usart.c;stm32f1xx_it.c;stm32f1xx_hal_msp.c;main.c;
 
 [PreviousLibFiles]
