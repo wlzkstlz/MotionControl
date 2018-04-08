@@ -3,6 +3,13 @@
 #include <stdlib.h>
 #include <math.h>
 
+void ResetPidControler(void)
+{
+	ResetSpeedControl();
+	ResetYawVelControl();
+	ResetLimitPa();
+}
+
 //speed loop
 #define PID_SPEED_KP 1
 #define PID_SPEED_KI 0
@@ -63,7 +70,7 @@ void SetYawVelControlValue(float value)
 }
 
 #define CAR_WIDTH	0.8
-void ExeControl(float Vc,float Wc,float Vl,float Vr,float* left_f_out,float *right_f_out)
+void ExeControl(float Vc,float Wc,float Vl,float Vr)
 {
 	//偏差换算
 	float speed_err=Vc-(Vl+Vr)*0.5;
@@ -120,9 +127,257 @@ void ExeControl(float Vc,float Wc,float Vl,float Vr,float* left_f_out,float *rig
 	g_cur_delta_F=right_f-left_f;
 	
 	//输出力控制
-	(*left_f_out)=left_f;
-	(*right_f_out)=right_f;
+	g_cur_left_F=left_f;
+	g_cur_right_F=right_f;
 }
+
+
+
+void ResetLimitPa(void)
+{
+	g_cur_left_f_limit=OVERFULLTQ_F;
+	g_cur_right_f_limit=OVERFULLTQ_F;
+	
+	uint32_t cur_time=HAL_GetTick();
+	
+	g_left_start_heat_25tq_t=cur_time;
+	g_left_start_heat_20tq_t=cur_time;
+	g_left_start_heat_15tq_t=cur_time;
+	g_left_start_heat_12tq_t=cur_time;
+	g_left_start_heat_11tq_t=cur_time;
+
+	g_right_start_heat_25tq_t=cur_time;
+	g_right_start_heat_20tq_t=cur_time;
+	g_right_start_heat_15tq_t=cur_time;
+	g_right_start_heat_12tq_t=cur_time;
+	g_right_start_heat_11tq_t=cur_time;
+}
+
+
+void UpdateLimitState(void)
+{
+	uint32_t cur_time=HAL_GetTick();//获取当前时间
+	
+	//【*左电机*】
+	//【判断加热时间是否超出极限，以调整输出力限制值】
+	if(cur_time-g_left_start_heat_25tq_t>OVER25TQ_TIME)//如果2.5倍加热时间已经超出极限值
+	{
+		g_cur_left_f_limit=g_cur_left_f_limit>OVER25TQ_F?OVER25TQ_F:g_cur_left_f_limit;//令限制值在2.5倍以下
+	}
+	
+	if(cur_time-g_left_start_heat_20tq_t>OVER20TQ_TIME)//如果2.0倍加热时间已经超出极限值
+	{
+		g_cur_left_f_limit=g_cur_left_f_limit>OVER20TQ_F?OVER20TQ_F:g_cur_left_f_limit;//令限制值在2.0倍以下
+	}
+	
+	if(cur_time-g_left_start_heat_15tq_t>OVER15TQ_TIME)//如果1.5倍加热时间已经超出极限值
+	{
+		g_cur_left_f_limit=g_cur_left_f_limit>OVER15TQ_F?OVER15TQ_F:g_cur_left_f_limit;//令限制值在1.5倍以下
+	}
+	
+	if(cur_time-g_left_start_heat_12tq_t>OVER12TQ_TIME)//如果1.2倍加热时间已经超出极限值
+	{
+		g_cur_left_f_limit=g_cur_left_f_limit>OVER12TQ_F?OVER12TQ_F:g_cur_left_f_limit;//令限制值在1.2倍以下
+	}
+	
+	if(cur_time-g_left_start_heat_11tq_t>OVER11TQ_TIME)//如果1.1倍加热时间已经超出极限值
+	{
+		g_cur_left_f_limit=g_cur_left_f_limit>OVER11TQ_F?OVER11TQ_F:g_cur_left_f_limit;//令限制值在1.1倍以下
+	}
+	
+	
+	//【更新加热、冷却开始时间】
+	if(abs(g_cur_left_F)<OVER11TQ_F)
+	{
+		g_left_start_heat_25tq_t=HAL_GetTick();
+		g_left_start_heat_20tq_t=HAL_GetTick();
+		g_left_start_heat_15tq_t=HAL_GetTick();
+		g_left_start_heat_12tq_t=HAL_GetTick();
+		g_left_start_heat_11tq_t=HAL_GetTick();
+	}
+	else 	if(abs(g_cur_left_F)<OVER12TQ_F)
+	{
+		g_left_start_heat_25tq_t=HAL_GetTick();
+		g_left_start_heat_20tq_t=HAL_GetTick();
+		g_left_start_heat_15tq_t=HAL_GetTick();
+		g_left_start_heat_12tq_t=HAL_GetTick();
+
+		g_left_start_cool_11tq_t=HAL_GetTick();
+	}
+	else 	if(abs(g_cur_left_F)<OVER15TQ_F)
+	{
+		g_left_start_heat_25tq_t=HAL_GetTick();
+		g_left_start_heat_20tq_t=HAL_GetTick();
+		g_left_start_heat_15tq_t=HAL_GetTick();
+		
+		g_left_start_cool_12tq_t=HAL_GetTick();
+		g_left_start_cool_11tq_t=HAL_GetTick();
+	}
+	else 	if(abs(g_cur_left_F)<OVER20TQ_F)
+	{
+		g_left_start_heat_25tq_t=HAL_GetTick();
+		g_left_start_heat_20tq_t=HAL_GetTick();
+		
+		g_left_start_cool_15tq_t=HAL_GetTick();
+		g_left_start_cool_12tq_t=HAL_GetTick();
+		g_left_start_cool_11tq_t=HAL_GetTick();
+	}
+	else 	if(abs(g_cur_left_F)<OVER25TQ_F)
+	{
+		g_left_start_heat_25tq_t=HAL_GetTick();
+		
+		g_left_start_cool_20tq_t=HAL_GetTick();
+		g_left_start_cool_15tq_t=HAL_GetTick();
+		g_left_start_cool_12tq_t=HAL_GetTick();
+		g_left_start_cool_11tq_t=HAL_GetTick();
+	}
+	else
+	{
+		g_left_start_cool_25tq_t=HAL_GetTick();
+		g_left_start_cool_20tq_t=HAL_GetTick();
+		g_left_start_cool_15tq_t=HAL_GetTick();
+		g_left_start_cool_12tq_t=HAL_GetTick();
+		g_left_start_cool_11tq_t=HAL_GetTick();
+	}
+	
+	//【判断冷却时间是否充足，以解除对应限制】
+	if(cur_time-g_left_start_cool_11tq_t>OVER11TQ_TIME)//如果1.1倍冷却时间已经足够
+	{
+		g_cur_left_f_limit=g_cur_left_f_limit<OVER12TQ_F?OVER12TQ_F:g_cur_left_f_limit;//令限制值上浮到1.1倍以上
+	}
+	
+	if(cur_time-g_left_start_cool_12tq_t>OVER12TQ_TIME)//如果1.2倍冷却时间已经足够
+	{
+		g_cur_left_f_limit=g_cur_left_f_limit<OVER15TQ_F?OVER15TQ_F:g_cur_left_f_limit;//令限制值上浮到1.2倍以上
+	}
+	
+	if(cur_time-g_left_start_cool_15tq_t>OVER15TQ_TIME)//如果1.5倍冷却时间已经足够
+	{
+		g_cur_left_f_limit=g_cur_left_f_limit<OVER20TQ_F?OVER20TQ_F:g_cur_left_f_limit;//令限制值上浮到1.5倍以上
+	}
+	
+	if(cur_time-g_left_start_cool_20tq_t>OVER20TQ_TIME)//如果2.0倍冷却时间已经足够
+	{
+		g_cur_left_f_limit=g_cur_left_f_limit<OVER25TQ_F?OVER25TQ_F:g_cur_left_f_limit;//令限制值上浮到2.0倍以上
+	}
+	
+	if(cur_time-g_left_start_cool_25tq_t>OVER25TQ_TIME)//如果2.5倍冷却时间已经足够
+	{
+		g_cur_left_f_limit=g_cur_left_f_limit<OVERFULLTQ_F?OVERFULLTQ_F:g_cur_left_f_limit;//令限制值上浮到2.5倍以上
+	}
+	
+	
+	//【*右电机*】
+	//【判断加热时间是否超出极限，以调整输出力限制值】
+	if(cur_time-g_right_start_heat_25tq_t>OVER25TQ_TIME)//如果2.5倍加热时间已经超出极限值
+	{
+		g_cur_right_f_limit=g_cur_right_f_limit>OVER25TQ_F?OVER25TQ_F:g_cur_right_f_limit;//令限制值在2.5倍以下
+	}
+	
+	if(cur_time-g_right_start_heat_20tq_t>OVER20TQ_TIME)//如果2.0倍加热时间已经超出极限值
+	{
+		g_cur_right_f_limit=g_cur_right_f_limit>OVER20TQ_F?OVER20TQ_F:g_cur_right_f_limit;//令限制值在2.0倍以下
+	}
+	
+	if(cur_time-g_right_start_heat_15tq_t>OVER15TQ_TIME)//如果1.5倍加热时间已经超出极限值
+	{
+		g_cur_right_f_limit=g_cur_right_f_limit>OVER15TQ_F?OVER15TQ_F:g_cur_right_f_limit;//令限制值在1.5倍以下
+	}
+	
+	if(cur_time-g_right_start_heat_12tq_t>OVER12TQ_TIME)//如果1.2倍加热时间已经超出极限值
+	{
+		g_cur_right_f_limit=g_cur_right_f_limit>OVER12TQ_F?OVER12TQ_F:g_cur_right_f_limit;//令限制值在1.2倍以下
+	}
+	
+	if(cur_time-g_right_start_heat_11tq_t>OVER11TQ_TIME)//如果1.1倍加热时间已经超出极限值
+	{
+		g_cur_right_f_limit=g_cur_right_f_limit>OVER11TQ_F?OVER11TQ_F:g_cur_right_f_limit;//令限制值在1.1倍以下
+	}
+	
+	
+	//【更新加热、冷却开始时间】
+	if(abs(g_cur_right_F)<OVER11TQ_F)
+	{
+		g_right_start_heat_25tq_t=HAL_GetTick();
+		g_right_start_heat_20tq_t=HAL_GetTick();
+		g_right_start_heat_15tq_t=HAL_GetTick();
+		g_right_start_heat_12tq_t=HAL_GetTick();
+		g_right_start_heat_11tq_t=HAL_GetTick();
+	}
+	else 	if(abs(g_cur_right_F)<OVER12TQ_F)
+	{
+		g_right_start_heat_25tq_t=HAL_GetTick();
+		g_right_start_heat_20tq_t=HAL_GetTick();
+		g_right_start_heat_15tq_t=HAL_GetTick();
+		g_right_start_heat_12tq_t=HAL_GetTick();
+
+		g_right_start_cool_11tq_t=HAL_GetTick();
+	}
+	else 	if(abs(g_cur_right_F)<OVER15TQ_F)
+	{
+		g_right_start_heat_25tq_t=HAL_GetTick();
+		g_right_start_heat_20tq_t=HAL_GetTick();
+		g_right_start_heat_15tq_t=HAL_GetTick();
+		
+		g_right_start_cool_12tq_t=HAL_GetTick();
+		g_right_start_cool_11tq_t=HAL_GetTick();
+	}
+	else 	if(abs(g_cur_right_F)<OVER20TQ_F)
+	{
+		g_right_start_heat_25tq_t=HAL_GetTick();
+		g_right_start_heat_20tq_t=HAL_GetTick();
+		
+		g_right_start_cool_15tq_t=HAL_GetTick();
+		g_right_start_cool_12tq_t=HAL_GetTick();
+		g_right_start_cool_11tq_t=HAL_GetTick();
+	}
+	else 	if(abs(g_cur_right_F)<OVER25TQ_F)
+	{
+		g_right_start_heat_25tq_t=HAL_GetTick();
+		
+		g_right_start_cool_20tq_t=HAL_GetTick();
+		g_right_start_cool_15tq_t=HAL_GetTick();
+		g_right_start_cool_12tq_t=HAL_GetTick();
+		g_right_start_cool_11tq_t=HAL_GetTick();
+	}
+	else
+	{
+		g_right_start_cool_25tq_t=HAL_GetTick();
+		g_right_start_cool_20tq_t=HAL_GetTick();
+		g_right_start_cool_15tq_t=HAL_GetTick();
+		g_right_start_cool_12tq_t=HAL_GetTick();
+		g_right_start_cool_11tq_t=HAL_GetTick();
+	}
+	
+	//【判断冷却时间是否充足，以解除对应限制】
+	if(cur_time-g_right_start_cool_11tq_t>OVER11TQ_TIME)//如果1.1倍冷却时间已经足够
+	{
+		g_cur_right_f_limit=g_cur_right_f_limit<OVER12TQ_F?OVER12TQ_F:g_cur_right_f_limit;//令限制值上浮到1.1倍以上
+	}
+	
+	if(cur_time-g_right_start_cool_12tq_t>OVER12TQ_TIME)//如果1.2倍冷却时间已经足够
+	{
+		g_cur_right_f_limit=g_cur_right_f_limit<OVER15TQ_F?OVER15TQ_F:g_cur_right_f_limit;//令限制值上浮到1.2倍以上
+	}
+	
+	if(cur_time-g_right_start_cool_15tq_t>OVER15TQ_TIME)//如果1.5倍冷却时间已经足够
+	{
+		g_cur_right_f_limit=g_cur_right_f_limit<OVER20TQ_F?OVER20TQ_F:g_cur_right_f_limit;//令限制值上浮到1.5倍以上
+	}
+	
+	if(cur_time-g_right_start_cool_20tq_t>OVER20TQ_TIME)//如果2.0倍冷却时间已经足够
+	{
+		g_cur_right_f_limit=g_cur_right_f_limit<OVER25TQ_F?OVER25TQ_F:g_cur_right_f_limit;//令限制值上浮到2.0倍以上
+	}
+	
+	if(cur_time-g_right_start_cool_25tq_t>OVER25TQ_TIME)//如果2.5倍冷却时间已经足够
+	{
+		g_cur_right_f_limit=g_cur_right_f_limit<OVERFULLTQ_F?OVERFULLTQ_F:g_cur_right_f_limit;//令限制值上浮到2.5倍以上
+	}
+
+}
+
+
 
 
 
