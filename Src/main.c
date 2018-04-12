@@ -38,7 +38,7 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "motor_driver.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -85,13 +85,32 @@ int main(void)
   MX_CAN_Init();
 
   /* USER CODE BEGIN 2 */
-
+	HAL_Delay(200);
+	initMotorDriver();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint32_t motor_cmd_delay=0;
+  motor_cmd_delay=HAL_GetTick();
   while (1)
   {
+	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13|GPIO_PIN_14, GPIO_PIN_RESET);
+	  HAL_Delay(1);
+	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13|GPIO_PIN_14, GPIO_PIN_SET);
+	  HAL_Delay(1);
+	  
+	  int16_t vl_cmd,vr_cmd;
+	  if(getMotorSpeedCmd(&vl_cmd,&vr_cmd))
+	  {
+		  setMotorSpeed(vl_cmd,vr_cmd);
+		  motor_cmd_delay=HAL_GetTick();
+	  }
+	  
+	  if(HAL_GetTick()-motor_cmd_delay>1000)
+	  {
+		  setMotorSpeed(0,0);
+	  }
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */

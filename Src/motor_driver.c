@@ -50,7 +50,8 @@ void setMotorSpeed(int16_t Vl,int16_t Vr)
 	if(abs(Vl)>MOTOR_FULL_SPEED||abs(Vr)>MOTOR_FULL_SPEED)
 		return;
 	
-	uint16_t dac_l=MOTOR_DRIVER_MIDVALUE,dac_r=MOTOR_DRIVER_MIDVALUE;
+	uint16_t dac_l=MOTOR_DRIVER_MIDVALUE;
+	uint16_t dac_r=MOTOR_DRIVER_MIDVALUE;
 	dac_l+=(int16_t)((float)Vl/MOTOR_FULL_SPEED*MOTOR_DRIVER_MIDVALUE);
 	dac_r+=(int16_t)((float)Vr/MOTOR_FULL_SPEED*MOTOR_DRIVER_MIDVALUE);
 	

@@ -546,6 +546,16 @@
               <FileType>1</FileType>
               <FilePath>..\Src\pid_control.c</FilePath>
             </File>
+            <File>
+              <FileName>dac8562.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\dac8562.c</FilePath>
+            </File>
+            <File>
+              <FileName>motor_driver.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\motor_driver.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
