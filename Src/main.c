@@ -94,12 +94,12 @@ int main(void)
 	initMotorDriver();
 	
 	
-  uint32_t led_flash_time=150;
+  uint32_t led_flash_time=100;
   uint32_t led_time=HAL_GetTick();
   uint8_t led_bit=0;
   
 
-	if(HAL_GPIO_ReadPin(GPIO_IO1_GPIO_Port,GPIO_IO1_Pin))
+	if(HAL_GPIO_ReadPin(GPIO_IO2_GPIO_Port,GPIO_IO2_Pin))
 	{
 		g_control_mode=1;
 		led_flash_time=500;
@@ -116,6 +116,9 @@ int main(void)
   { 
 	  if(g_control_mode)//【力矩开环控制模式】
 	  {
+      setMotorForceBySpeed(-500,500);
+      HAL_Delay(20);
+      #if 0
 			int16_t vl_cmd,vr_cmd;
 			if(getMotorSpeedCmd(&vl_cmd,&vr_cmd))
 			{
@@ -127,6 +130,8 @@ int main(void)
 			{
 				setMotorForceBySpeed(0,0);
 			}
+      
+      #endif
 	  }
 	  else//【力矩闭环控制模式】
 	  {

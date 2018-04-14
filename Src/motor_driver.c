@@ -122,3 +122,32 @@ void cvtMotorSpeed(int16_t Vl,int16_t Vr,float *v,float *w)
 }
 
 
+//伺服使能与报警
+void SetMotorEn(uint8_t id,uint8_t en)
+{
+  if(id==0)//左电机
+  {
+    if(en)
+    {
+      HAL_GPIO_WritePin(ENA_A1_GPIO_Port, ENA_A1_Pin, GPIO_PIN_SET);
+    }
+    else
+    {
+      HAL_GPIO_WritePin(ENA_A1_GPIO_Port, ENA_A1_Pin, GPIO_PIN_RESET);
+    }
+  }
+  else if(id==1)//右电机
+  {
+    if(en)
+    {
+      HAL_GPIO_WritePin(ENA_A2_GPIO_Port, ENA_A2_Pin, GPIO_PIN_SET);
+    }
+    else
+    {
+      HAL_GPIO_WritePin(ENA_A2_GPIO_Port, ENA_A2_Pin, GPIO_PIN_RESET);
+    }
+  }
+}
+
+
+

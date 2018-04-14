@@ -10,6 +10,10 @@ uint8_t getMotorSpeedCmd(int16_t*vl,int16_t*vr);
 void setMotorForceBySpeed(int16_t Vl,int16_t Vr);
 
 void cvtMotorSpeed(int16_t Vl,int16_t Vr,float *v,float *w);
+
+
+//伺服使能与报警
+void SetMotorEn(uint8_t id,uint8_t en);
 #endif
 
 
