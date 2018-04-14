@@ -45,6 +45,8 @@
 #define GPIO_IO1_GPIO_Port GPIOC
 #define GPIO_IO2_Pin GPIO_PIN_1
 #define GPIO_IO2_GPIO_Port GPIOC
+#define LED_OUT_Pin GPIO_PIN_10
+#define LED_OUT_GPIO_Port GPIOD
 #define ADC_IN_Pin GPIO_PIN_13
 #define ADC_IN_GPIO_Port GPIOD
 #define ADC_SCLK_Pin GPIO_PIN_14

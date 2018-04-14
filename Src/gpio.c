@@ -65,22 +65,28 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOE_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_IO1_Pin|GPIO_IO2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIO_IO1_GPIO_Port, GPIO_IO1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, ADC_IN_Pin|ADC_SCLK_Pin|ADC_SYNC_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, LED_OUT_Pin|ADC_IN_Pin|ADC_SCLK_Pin|ADC_SYNC_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOE, ENA_A1_Pin|ENA_A2_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PCPin PCPin */
-  GPIO_InitStruct.Pin = GPIO_IO1_Pin|GPIO_IO2_Pin;
+  /*Configure GPIO pin : PtPin */
+  GPIO_InitStruct.Pin = GPIO_IO1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIO_IO1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PDPin PDPin PDPin */
-  GPIO_InitStruct.Pin = ADC_IN_Pin|ADC_SCLK_Pin|ADC_SYNC_Pin;
+  /*Configure GPIO pin : PtPin */
+  GPIO_InitStruct.Pin = GPIO_IO2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIO_IO2_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PDPin PDPin PDPin PDPin */
+  GPIO_InitStruct.Pin = LED_OUT_Pin|ADC_IN_Pin|ADC_SCLK_Pin|ADC_SYNC_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);

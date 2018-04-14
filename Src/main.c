@@ -39,6 +39,7 @@
 
 /* USER CODE BEGIN Includes */
 #include "motor_driver.h"
+#include "pid_control.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -58,6 +59,8 @@ void Error_Handler(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
+
+uint8_t g_control_mode=0;//默认为力矩闭环控制模式
 
 /* USER CODE END 0 */
 
@@ -85,32 +88,82 @@ int main(void)
   MX_CAN_Init();
 
   /* USER CODE BEGIN 2 */
-	HAL_Delay(200);
+  HAL_GPIO_WritePin(GPIO_IO1_GPIO_Port, GPIO_IO1_Pin, GPIO_PIN_SET);
+  
+  HAL_Delay(200);
 	initMotorDriver();
+	
+	
+  uint32_t led_flash_time=150;
+  uint32_t led_time=HAL_GetTick();
+  uint8_t led_bit=0;
+  
+
+	if(HAL_GPIO_ReadPin(GPIO_IO1_GPIO_Port,GPIO_IO1_Pin))
+	{
+		g_control_mode=1;
+		led_flash_time=500;
+	}
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   uint32_t motor_cmd_delay=0;
   motor_cmd_delay=HAL_GetTick();
+	
+
   while (1)
-  {
-	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13|GPIO_PIN_14, GPIO_PIN_RESET);
-	  HAL_Delay(1);
-	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13|GPIO_PIN_14, GPIO_PIN_SET);
-	  HAL_Delay(1);
-	  
-	  int16_t vl_cmd,vr_cmd;
-	  if(getMotorSpeedCmd(&vl_cmd,&vr_cmd))
+  { 
+	  if(g_control_mode)//【力矩开环控制模式】
 	  {
-		  setMotorSpeed(vl_cmd,vr_cmd);
-		  motor_cmd_delay=HAL_GetTick();
+			int16_t vl_cmd,vr_cmd;
+			if(getMotorSpeedCmd(&vl_cmd,&vr_cmd))
+			{
+				setMotorForceBySpeed(vl_cmd,vr_cmd);
+				motor_cmd_delay=HAL_GetTick();
+			}
+
+			if(HAL_GetTick()-motor_cmd_delay>1000)
+			{
+				setMotorForceBySpeed(0,0);
+			}
+	  }
+	  else//【力矩闭环控制模式】
+	  {
+
+      int16_t vl_cmd,vr_cmd;
+			if(getMotorSpeedCmd(&vl_cmd,&vr_cmd))
+			{
+        float v_cmd=0,w_cmd=0;
+        cvtMotorSpeed(vl_cmd,vr_cmd,&v_cmd,&w_cmd);
+        
+        //todo 未完待续
+			}
+
+			if(HAL_GetTick()-motor_cmd_delay>1000)
+			{
+				setMotorForceBySpeed(0,0);
+			}
 	  }
 	  
-	  if(HAL_GetTick()-motor_cmd_delay>1000)
+    
+    //【闪烁led灯】
+	  if(HAL_GetTick()-led_time>led_flash_time)
 	  {
-		  setMotorSpeed(0,0);
+		  led_time=HAL_GetTick();
+		  if(led_bit)
+		  {
+			  led_bit=0;
+			  HAL_GPIO_WritePin(GPIOD, LED_OUT_Pin, GPIO_PIN_SET);
+		  }
+		  else
+		  {
+			  led_bit=1;
+			  HAL_GPIO_WritePin(GPIOD, LED_OUT_Pin, GPIO_PIN_RESET);
+		  }
 	  }
+	  
+
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */

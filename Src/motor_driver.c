@@ -59,6 +59,23 @@ void setMotorSpeed(int16_t Vl,int16_t Vr)
 	DAC8562_SetData(MOTOR_DAC_CH_R,dac_r);
 }
 
+
+void setMotorForceBySpeed(int16_t Vl,int16_t Vr)
+{
+	if(abs(Vl)>MOTOR_FULL_SPEED||abs(Vr)>MOTOR_FULL_SPEED)
+		return;
+	
+	float force_scale=0.5;
+	
+	uint16_t dac_l=MOTOR_DRIVER_MIDVALUE;
+	uint16_t dac_r=MOTOR_DRIVER_MIDVALUE;
+	dac_l+=(int16_t)((float)Vl/MOTOR_FULL_SPEED*MOTOR_DRIVER_MIDVALUE*force_scale);
+	dac_r+=(int16_t)((float)Vr/MOTOR_FULL_SPEED*MOTOR_DRIVER_MIDVALUE*force_scale);
+	
+	DAC8562_SetData(MOTOR_DAC_CH_L,dac_l);
+	DAC8562_SetData(MOTOR_DAC_CH_R,dac_r);	
+}
+
 void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 {
 	if(hcan->pRxMsg->StdId==0x30)
@@ -84,3 +101,24 @@ uint8_t getMotorSpeedCmd(int16_t*vl,int16_t*vr)
 	gSpeedCmdNew=0;
 	return 1;
 }
+
+
+#define	CAR_WIDTH	0.652
+#define CAR_WHEEL_RADIUM	0.1485
+void cvtMotorSpeed(int16_t Vl,int16_t Vr,float *v,float *w)
+{
+	if(abs(Vl)>MOTOR_FULL_SPEED||abs(Vr)>MOTOR_FULL_SPEED)
+	{
+		(*v)=0;
+		(*w)=0;
+		return;
+	}
+	
+	float left_v=Vl*0.5*3.1415926*2*CAR_WHEEL_RADIUM/60.0;
+	float right_v=Vr*0.5*3.1415926*2*CAR_WHEEL_RADIUM/60.0;
+	(*v)=(left_v+right_v)*0.5;
+	(*w)=(right_v-left_v)/CAR_WIDTH;
+	return;
+}
+
+
