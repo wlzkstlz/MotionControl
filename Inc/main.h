@@ -53,10 +53,10 @@
 #define ADC_SCLK_GPIO_Port GPIOD
 #define ADC_SYNC_Pin GPIO_PIN_15
 #define ADC_SYNC_GPIO_Port GPIOD
-#define DI_ALM_A1_Pin GPIO_PIN_8
-#define DI_ALM_A1_GPIO_Port GPIOB
-#define DI_ALM_A2_Pin GPIO_PIN_9
-#define DI_ALM_A2_GPIO_Port GPIOB
+#define MOTOR_ALARM_1_Pin GPIO_PIN_8
+#define MOTOR_ALARM_1_GPIO_Port GPIOB
+#define MOTOR_ALARM_2_Pin GPIO_PIN_9
+#define MOTOR_ALARM_2_GPIO_Port GPIOB
 #define ENA_A1_Pin GPIO_PIN_0
 #define ENA_A1_GPIO_Port GPIOE
 #define ENA_A2_Pin GPIO_PIN_1

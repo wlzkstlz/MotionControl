@@ -3,6 +3,7 @@
 #include "stdlib.h"
 #include "can.h"
 #include "string.h"
+#include "stm32f1xx_hal.h"
 
 #define MOTOR_DRIVER_MIDVALUE	32767
 #define MOTOR_DRIVER_FULLVALUE	65535
@@ -40,9 +41,11 @@ void initMotorDriver(void)
 {
 	gSpeedCmdNew=0;
 	
-	
 	initCan();
 	InitDAC8562();
+  
+  SetMotorEn(0,1);
+  SetMotorEn(1,1);
 }
 	
 void setMotorSpeed(int16_t Vl,int16_t Vr)
@@ -148,6 +151,142 @@ void SetMotorEn(uint8_t id,uint8_t en)
     }
   }
 }
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)//ËÅ·þ±¨¾¯ÖÐ¶Ï
+{
+  if(GPIO_Pin==GPIO_PIN_8||GPIO_Pin==GPIO_PIN_9)
+  {
+    SetMotorEn(0,0);
+    SetMotorEn(1,0);
+    SetControlMode(EMERGENCY_MODE);
+  }
+}
+
+
+
+
+
+MotorControlMode gControlMode=SPEED_CMD_MODE;
+void SetControlMode(MotorControlMode mode)
+{
+  gControlMode=mode;
+}
+MotorControlMode GetControlMode()
+{
+  return gControlMode;
+}
+
+
+uint32_t led_flash_time=100;
+uint32_t led_time=0;
+uint8_t led_bit=0;
+
+void RunMotorControlMachine(MotorControlMode mode)
+{
+   switch(mode)
+  {
+    case FORCE_OPEN_MODE:
+      funOpenForceMode();
+      led_flash_time=1500;
+      break;
+    case FORCE_CLOSE_MODE:
+      funCloseForceMode();
+      led_flash_time=100;
+      break;
+    case SPEED_CMD_MODE:
+      funSpeedCmdMode();
+      led_flash_time=500;
+      break;
+    case EMERGENCY_MODE:
+      funEmergencyMode();
+      led_flash_time=50;
+      break;
+    default:
+      HAL_Delay(100);
+      break;
+  }
+  
+    //¡¾ÉÁË¸ledµÆ¡¿
+  if(HAL_GetTick()-led_time>led_flash_time)
+  {
+    led_time=HAL_GetTick();
+    if(led_bit)
+    {
+      led_bit=0;
+      HAL_GPIO_WritePin(GPIOD, LED_OUT_Pin, GPIO_PIN_SET);
+    }
+    else
+    {
+      led_bit=1;
+      HAL_GPIO_WritePin(GPIOD, LED_OUT_Pin, GPIO_PIN_RESET);
+    }
+  }
+}
+
+void funOpenForceMode()
+{
+  static uint32_t motor_cmd_delay=0;
+  int16_t vl_cmd,vr_cmd;
+  if(getMotorSpeedCmd(&vl_cmd,&vr_cmd))
+  {
+    setMotorForceBySpeed(vl_cmd,vr_cmd);
+    HAL_Delay(5);
+    motor_cmd_delay=HAL_GetTick();
+  }
+
+  if(HAL_GetTick()-motor_cmd_delay>1000)
+  {
+    setMotorForceBySpeed(0,0);
+    HAL_Delay(20);
+  }
+}
+
+void funCloseForceMode()
+{
+  static uint32_t motor_cmd_delay=0;
+  int16_t vl_cmd,vr_cmd;
+  if(getMotorSpeedCmd(&vl_cmd,&vr_cmd))
+  {
+    float v_cmd=0,w_cmd=0;
+    cvtMotorSpeed(vl_cmd,vr_cmd,&v_cmd,&w_cmd);
+    
+    //todo Î´Íê´ýÐø
+  }
+
+  if(HAL_GetTick()-motor_cmd_delay>1000)
+  {
+    setMotorForceBySpeed(0,0);
+    HAL_Delay(20);
+  }
+}
+void funSpeedCmdMode()
+{
+  static uint32_t motor_cmd_delay=0;
+  int16_t vl_cmd,vr_cmd;
+  if(getMotorSpeedCmd(&vl_cmd,&vr_cmd))
+  {
+    setMotorSpeed(vl_cmd,vr_cmd);
+    HAL_Delay(5);
+    motor_cmd_delay=HAL_GetTick();
+  }
+
+  if(HAL_GetTick()-motor_cmd_delay>1000)
+  {
+    setMotorSpeed(0,0);
+    HAL_Delay(20);
+  }
+}
+void funEmergencyMode()
+{
+  setMotorSpeed(0,0);
+  SetMotorEn(0,0);
+  SetMotorEn(1,0);
+  HAL_Delay(10);
+}
+
+
+
+
 
 
 

@@ -60,8 +60,6 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN 0 */
 
-uint8_t g_control_mode=0;//默认为力矩闭环控制模式
-
 /* USER CODE END 0 */
 
 int main(void)
@@ -92,17 +90,10 @@ int main(void)
   
   HAL_Delay(200);
 	initMotorDriver();
-	
-	
-  uint32_t led_flash_time=100;
-  uint32_t led_time=HAL_GetTick();
-  uint8_t led_bit=0;
-  
 
 	if(HAL_GPIO_ReadPin(GPIO_IO2_GPIO_Port,GPIO_IO2_Pin))
 	{
-		g_control_mode=1;
-		led_flash_time=500;
+		SetControlMode(SPEED_CMD_MODE);
 	}
   /* USER CODE END 2 */
 
@@ -112,61 +103,14 @@ int main(void)
   motor_cmd_delay=HAL_GetTick();
 	
 
+  uint32_t test_flip_time=HAL_GetTick();
+  int16_t test_out=1000;
+  
+  
+  
   while (1)
   { 
-	  if(g_control_mode)//【力矩开环控制模式】
-	  {
-      setMotorForceBySpeed(-500,500);
-      HAL_Delay(20);
-      #if 0
-			int16_t vl_cmd,vr_cmd;
-			if(getMotorSpeedCmd(&vl_cmd,&vr_cmd))
-			{
-				setMotorForceBySpeed(vl_cmd,vr_cmd);
-				motor_cmd_delay=HAL_GetTick();
-			}
-
-			if(HAL_GetTick()-motor_cmd_delay>1000)
-			{
-				setMotorForceBySpeed(0,0);
-			}
-      
-      #endif
-	  }
-	  else//【力矩闭环控制模式】
-	  {
-
-      int16_t vl_cmd,vr_cmd;
-			if(getMotorSpeedCmd(&vl_cmd,&vr_cmd))
-			{
-        float v_cmd=0,w_cmd=0;
-        cvtMotorSpeed(vl_cmd,vr_cmd,&v_cmd,&w_cmd);
-        
-        //todo 未完待续
-			}
-
-			if(HAL_GetTick()-motor_cmd_delay>1000)
-			{
-				setMotorForceBySpeed(0,0);
-			}
-	  }
-	  
-    
-    //【闪烁led灯】
-	  if(HAL_GetTick()-led_time>led_flash_time)
-	  {
-		  led_time=HAL_GetTick();
-		  if(led_bit)
-		  {
-			  led_bit=0;
-			  HAL_GPIO_WritePin(GPIOD, LED_OUT_Pin, GPIO_PIN_SET);
-		  }
-		  else
-		  {
-			  led_bit=1;
-			  HAL_GPIO_WritePin(GPIOD, LED_OUT_Pin, GPIO_PIN_RESET);
-		  }
-	  }
+    RunMotorControlMachine(GetControlMode());
 	  
 
   /* USER CODE END WHILE */
