@@ -95,18 +95,16 @@ int main(void)
 	{
 		SetControlMode(SPEED_CMD_MODE);
 	}
+  else
+  {
+    SetControlMode(FORCE_OPEN_MODE);
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   uint32_t motor_cmd_delay=0;
   motor_cmd_delay=HAL_GetTick();
-	
-
-  uint32_t test_flip_time=HAL_GetTick();
-  int16_t test_out=1000;
-  
-  
   
   while (1)
   { 

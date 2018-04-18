@@ -7,7 +7,12 @@ void setMotorSpeed(int16_t Vl,int16_t Vr);
 uint8_t getMotorSpeedCmd(int16_t*vl,int16_t*vr);
 
 
+uint8_t GetMotorSpeedFb(int16_t*vl,int16_t *vr);
+
+
 void setMotorForceBySpeed(int16_t Vl,int16_t Vr);
+
+void setMotorForceByVolt(float Vl,float Vr);
 
 void cvtMotorSpeed(int16_t Vl,int16_t Vr,float *v,float *w);
 

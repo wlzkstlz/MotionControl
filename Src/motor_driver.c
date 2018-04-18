@@ -4,6 +4,7 @@
 #include "can.h"
 #include "string.h"
 #include "stm32f1xx_hal.h"
+#include "pid_control.h"
 
 #define MOTOR_DRIVER_MIDVALUE	32767
 #define MOTOR_DRIVER_FULLVALUE	65535
@@ -46,6 +47,8 @@ void initMotorDriver(void)
   
   SetMotorEn(0,1);
   SetMotorEn(1,1);
+  
+  ResetPidControler();
 }
 	
 void setMotorSpeed(int16_t Vl,int16_t Vr)
@@ -57,6 +60,21 @@ void setMotorSpeed(int16_t Vl,int16_t Vr)
 	uint16_t dac_r=MOTOR_DRIVER_MIDVALUE;
 	dac_l+=(int16_t)((float)Vl/MOTOR_FULL_SPEED*MOTOR_DRIVER_MIDVALUE);
 	dac_r+=(int16_t)((float)Vr/MOTOR_FULL_SPEED*MOTOR_DRIVER_MIDVALUE);
+	
+	DAC8562_SetData(MOTOR_DAC_CH_L,dac_l);
+	DAC8562_SetData(MOTOR_DAC_CH_R,dac_r);
+}
+
+#define MAX_OUT_VOLT 10.0
+void setMotorForceByVolt(float Vl,float Vr)
+{
+  if(abs(Vl)>MAX_OUT_VOLT||abs(Vr)>MAX_OUT_VOLT)
+  return;
+  
+  uint16_t dac_l=MOTOR_DRIVER_MIDVALUE;
+	uint16_t dac_r=MOTOR_DRIVER_MIDVALUE;
+	dac_l+=(int16_t)((float)Vl/MAX_OUT_VOLT*MOTOR_DRIVER_MIDVALUE);
+	dac_r+=(int16_t)((float)Vr/MAX_OUT_VOLT*MOTOR_DRIVER_MIDVALUE);
 	
 	DAC8562_SetData(MOTOR_DAC_CH_L,dac_l);
 	DAC8562_SetData(MOTOR_DAC_CH_R,dac_r);
@@ -106,19 +124,20 @@ uint8_t getMotorSpeedCmd(int16_t*vl,int16_t*vr)
 }
 
 
+uint8_t GetMotorSpeedFb(int16_t*vl,int16_t *vr)
+{
+  //todo
+}
+
+
 #define	CAR_WIDTH	0.652
 #define CAR_WHEEL_RADIUM	0.1485
+#define MATH_PI 3.141592654
+
 void cvtMotorSpeed(int16_t Vl,int16_t Vr,float *v,float *w)
 {
-	if(abs(Vl)>MOTOR_FULL_SPEED||abs(Vr)>MOTOR_FULL_SPEED)
-	{
-		(*v)=0;
-		(*w)=0;
-		return;
-	}
-	
-	float left_v=Vl*0.5*3.1415926*2*CAR_WHEEL_RADIUM/60.0;
-	float right_v=Vr*0.5*3.1415926*2*CAR_WHEEL_RADIUM/60.0;
+	float left_v=Vl*MATH_PI*2*CAR_WHEEL_RADIUM/60.0;
+	float right_v=Vr*MATH_PI*2*CAR_WHEEL_RADIUM/60.0;
 	(*v)=(left_v+right_v)*0.5;
 	(*w)=(right_v-left_v)/CAR_WIDTH;
 	return;
@@ -206,7 +225,7 @@ void RunMotorControlMachine(MotorControlMode mode)
       break;
   }
   
-    //【闪烁led灯】
+  //【闪烁led灯】
   if(HAL_GetTick()-led_time>led_flash_time)
   {
     led_time=HAL_GetTick();
@@ -241,24 +260,48 @@ void funOpenForceMode()
   }
 }
 
+
+int16_t g_vl_cmd,g_vr_cmd;
 void funCloseForceMode()
 {
-  static uint32_t motor_cmd_delay=0;
-  int16_t vl_cmd,vr_cmd;
-  if(getMotorSpeedCmd(&vl_cmd,&vr_cmd))
+  static uint32_t speed_cmd_delay=0,speed_fb_delay=0;
+  if(getMotorSpeedCmd(&g_vl_cmd,&g_vr_cmd))
   {
-    float v_cmd=0,w_cmd=0;
-    cvtMotorSpeed(vl_cmd,vr_cmd,&v_cmd,&w_cmd);
-    
-    //todo 未完待续
+    speed_cmd_delay=HAL_GetTick();
   }
-
-  if(HAL_GetTick()-motor_cmd_delay>1000)
+  
+  int16_t vl_fb=0,vr_fb=0;
+  if(GetMotorSpeedFb(&vl_fb,&vr_fb))//获取速度反馈
+  {
+    speed_fb_delay=HAL_GetTick();
+  }
+  
+  if(HAL_GetTick()-speed_cmd_delay>1000||HAL_GetTick()-speed_fb_delay>200)//如果超时没有接收到速度指令，则置零
   {
     setMotorForceBySpeed(0,0);
+    ResetPidControler();
     HAL_Delay(20);
+    return;
   }
+  
+  float v_cmd=0,w_cmd=0,v_fb=0,w_fb=0;//换算指令速度和反馈速度
+  cvtMotorSpeed(g_vl_cmd,g_vr_cmd,&v_cmd,&w_cmd);
+  cvtMotorSpeed(vl_fb,vr_fb,&v_fb,&w_fb);
+  
+  ExeMotionControl(v_cmd,w_cmd,v_fb,w_fb);
+  UpdateLimitState();
+  
+  float f_left=0,f_right=0;//本质是模拟输出电压值
+  GetPidForceOut(&f_left,&f_right);
+  setMotorForceByVolt(f_left,f_right);
+  
+  HAL_Delay(10);
+  
+  //todo 未完待续
 }
+
+
+
 void funSpeedCmdMode()
 {
   static uint32_t motor_cmd_delay=0;

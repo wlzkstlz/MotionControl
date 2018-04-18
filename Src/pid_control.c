@@ -75,8 +75,6 @@ void SetYawVelControlValue(float value)
 	g_cur_delta_F=value;
 }
 
-#define CAR_WIDTH	0.8
-
 float g_cur_right_F=0;
 float g_cur_left_F=0;
 
@@ -136,11 +134,11 @@ uint32_t g_right_start_cool_12tq_t=0;
 uint32_t g_right_start_cool_11tq_t=0;
 
 
-void ExeControl(float Vc,float Wc,float Vl,float Vr)
+void ExeMotionControl(float Vcmd,float Wcmd,float Vfb,float Wfb)
 {
 	//偏差换算
-	float speed_err=Vc-(Vl+Vr)*0.5;
-	float yawvel_err=Wc-(Vr-Vl)/0.8;
+	float speed_err=Vcmd-Vfb;
+	float yawvel_err=Wcmd-Wfb;
 	
 	//分别进行速度与角速度pid
 	RunSpeedControl(speed_err);
@@ -441,6 +439,14 @@ void UpdateLimitState(void)
 		g_cur_right_f_limit=g_cur_right_f_limit<OVERFULLTQ_F?OVERFULLTQ_F:g_cur_right_f_limit;//令限制值上浮到2.5倍以上
 	}
 
+}
+
+
+
+void GetPidForceOut(float *f_left,float *f_right)
+{
+  (*f_left)=g_cur_left_F;
+  (*f_right)=g_cur_right_F;
 }
 
 
