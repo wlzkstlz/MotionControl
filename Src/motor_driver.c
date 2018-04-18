@@ -9,8 +9,8 @@
 #define MOTOR_DRIVER_FULLVALUE	65535
 #define	MOTOR_FULL_SPEED	1500.0f//	unit:r/min
 
-#define	MOTOR_DAC_CH_L	0
-#define	MOTOR_DAC_CH_R	1
+#define	MOTOR_DAC_CH_L	1//0
+#define	MOTOR_DAC_CH_R	0//1
 
 
 static CanRxMsgTypeDef	RxMessage;
