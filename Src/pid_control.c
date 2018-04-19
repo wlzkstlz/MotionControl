@@ -193,6 +193,9 @@ void ExeMotionControl(float Vcmd,float Wcmd,float Vfb,float Wfb)
 	//Êä³öÁ¦¿ØÖÆ
 	g_cur_left_F=left_f;
 	g_cur_right_F=right_f;
+  
+  
+  UpdateLimitState();
 }
 
 

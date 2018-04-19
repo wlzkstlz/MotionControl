@@ -41,6 +41,18 @@ void funOpenForceMode();
 void funCloseForceMode();
 void funSpeedCmdMode();
 void funEmergencyMode();
+
+
+
+
+//ËÙ¶È·´À¡
+void initSpeedFbCommunication();
+void SetNeedRestartUart(uint8_t ch,uint8_t need_restart);
+uint8_t GetNeedRestartUart(uint8_t ch);
+void HoldUartCommunication();
+void AskForSpeedFb(uint8_t ch);//0 for left,1 for right
+
+
 #endif
 
 
