@@ -128,9 +128,6 @@ uint8_t getMotorSpeedCmd(int16_t*vl,int16_t*vr)
 }
 
 
-
-
-
 #define	CAR_WIDTH	0.652
 #define CAR_WHEEL_RADIUM	0.1485
 #define MATH_PI 3.141592654
@@ -183,9 +180,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)//伺服报警中断
 }
 
 
-
-
-
 MotorControlMode gControlMode=SPEED_CMD_MODE;
 void SetControlMode(MotorControlMode mode)
 {
@@ -203,6 +197,26 @@ uint8_t led_bit=0;
 
 void RunMotorControlMachine(MotorControlMode mode)
 {
+  //【维持速度反馈问答】
+  HoldUartCommunication();
+  KeepAsk4Fb();
+  
+  //【debug】
+  int16_t debug_vl=0,debug_vr=0;
+  static uint32_t debug_fb_ts=0;
+  if(GetMotorSpeedFb(&debug_vl,&debug_vr))//闭环模式时此语句需要注释掉，否则逻辑不对
+  {
+    uint32_t fb_period=HAL_GetTick()-debug_fb_ts;
+    debug_fb_ts=HAL_GetTick();
+    
+    printf("vl=%d,vr=%d,period=%dms\n",debug_vl,debug_vr,fb_period);
+  }
+  
+  static uint32_t state_machine_ts=0;
+  uint32_t state_machine_period=HAL_GetTick()-state_machine_ts;
+  state_machine_ts=HAL_GetTick();
+  //printf("sm_period=%dms\n",state_machine_period);
+  
   //【执行状态机行为】
    switch(mode)
   {
@@ -226,11 +240,7 @@ void RunMotorControlMachine(MotorControlMode mode)
       HAL_Delay(100);
       break;
   }
-  
-  
-  //【维持串口接收循环】
-  HoldUartCommunication();
-  
+
   //【闪烁led灯】
   if(HAL_GetTick()-led_time>led_flash_time)
   {
@@ -256,7 +266,6 @@ void funOpenForceMode()
   if(getMotorSpeedCmd(&vl_cmd,&vr_cmd))
   {
     setMotorForceBySpeed(vl_cmd,vr_cmd);
-    HAL_Delay(5);
     motor_cmd_delay=HAL_GetTick();
   }
 
@@ -265,6 +274,8 @@ void funOpenForceMode()
     setMotorForceBySpeed(0,0);
     HAL_Delay(20);
   }
+  
+  HAL_Delay(5);
 }
 
 
@@ -327,7 +338,6 @@ void funSpeedCmdMode()
   if(getMotorSpeedCmd(&vl_cmd,&vr_cmd))
   {
     setMotorSpeed(vl_cmd,vr_cmd);
-    HAL_Delay(5);
     motor_cmd_delay=HAL_GetTick();
   }
 
@@ -336,6 +346,8 @@ void funSpeedCmdMode()
     setMotorSpeed(0,0);
     HAL_Delay(20);
   }
+  
+  HAL_Delay(5);
 }
 void funEmergencyMode()
 {
@@ -348,16 +360,24 @@ void funEmergencyMode()
 
 //速度反馈
 uint8_t ask_data[]={0x00,0x03,0x43,0x00,0x00,0x02,0xD0,0x5E};//查询指令
-void AskForSpeedFb(uint8_t ch)
+uint8_t AskForSpeedFb(uint8_t ch)
 {
+  HAL_StatusTypeDef ret=HAL_OK;
   if(ch==0)
   {
-    HAL_UART_Transmit(&huart1,ask_data,sizeof(ask_data),50);
+    //HAL_UART_Transmit(&huart1,ask_data,sizeof(ask_data),50);
+    ret=HAL_UART_Transmit_IT(&huart1,ask_data,sizeof(ask_data));
   }
   else 
   {
-    HAL_UART_Transmit(&huart2,ask_data,sizeof(ask_data),50);
+    //HAL_UART_Transmit(&huart2,ask_data,sizeof(ask_data),50);
+    ret=HAL_UART_Transmit_IT(&huart2,ask_data,sizeof(ask_data));
   }
+  
+  if(ret!=HAL_OK)
+    return 0;
+  else 
+    return 1;
 }
 
 uint8_t left_rev_byte=0;
@@ -365,12 +385,12 @@ uint8_t right_rev_byte=0;//串口接收数据
 
 void initSpeedFbCommunication()//初始化串口接收
 {
-  HAL_UART_Receive_IT(&huart1,&left_rev_byte,1);
-  HAL_UART_Receive_IT(&huart2,&right_rev_byte,1);
+//  HAL_UART_Receive_IT(&huart1,&left_rev_byte,1);
+//  HAL_UART_Receive_IT(&huart2,&right_rev_byte,1);
 }
 
-uint8_t uart1_need_restart=0;
-uint8_t uart2_need_restart=0;
+uint8_t uart1_need_restart=1;
+uint8_t uart2_need_restart=1;
 void SetNeedRestartUart(uint8_t ch,uint8_t need_restart)
 {
   if(ch==0)
@@ -436,8 +456,9 @@ uint8_t right_rev_index=0;
 uint8_t left_fb_data_new=0;
 uint8_t right_fb_data_new=0;
 
-
-//【串口回调函数】
+uint8_t left_responsed=1;
+uint8_t right_responsed=1;
+//【串口接收完成回调函数】
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if(huart->Instance==USART1)//左电机
@@ -456,6 +477,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       memcpy(left_fb_register,left_fb_data_buf,sizeof(left_fb_register));
       left_fb_data_new=1;
       left_fb_timestamp=HAL_GetTick();
+      left_responsed=1;
     }
 		
 		HAL_StatusTypeDef ret=HAL_UART_Receive_IT(&huart1,&left_rev_byte,1);
@@ -482,6 +504,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
       memcpy(right_fb_register,right_fb_data_buf,sizeof(right_fb_register));
       right_fb_data_new=1;
       right_fb_timestamp=HAL_GetTick();
+      right_responsed=1;
     }
 		
 		HAL_StatusTypeDef ret=HAL_UART_Receive_IT(&huart2,&right_rev_byte,1);
@@ -493,7 +516,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	}
 }
 
-#define LEFT_RIGHT_FB_TIME_INTERVAL 50
+
+#define LEFT_RIGHT_FB_TIME_INTERVAL 30
 uint8_t GetMotorSpeedFb(int16_t*vl,int16_t *vr)
 {
   //todo
@@ -539,9 +563,54 @@ uint8_t GetMotorSpeedFb(int16_t*vl,int16_t *vr)
   int16_t right_vel=((right_vel_data>>12)*25/109);
   (*vl)=left_vel;
   (*vr)=right_vel;
+  
+  left_fb_data_new=0;
+  right_fb_data_new=0;
   return 1;
 }
 
+#define ASK_FB_WAIT_TIME 20
+uint32_t left_ask_ts=0;
+uint32_t right_ask_ts=0;
+uint8_t left_tx_cplt=1;
+uint8_t right_tx_cplt=1;
+void KeepAsk4Fb()
+{
+  uint32_t cur_time=HAL_GetTick();
+  if(left_responsed||(left_tx_cplt&&cur_time-left_ask_ts>ASK_FB_WAIT_TIME))
+  {
+    if(AskForSpeedFb(0))
+    {
+      left_tx_cplt=0;
+      left_responsed=0;
+    }
+  }
+  
+  if(right_responsed||(right_tx_cplt&&cur_time-right_ask_ts>ASK_FB_WAIT_TIME))
+  {
+    if(AskForSpeedFb(1))
+    {
+      right_tx_cplt=0;
+      right_responsed=0;
+    }
+  }
+}
+
+//【串口发送完成回调函数】
+ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if(huart->Instance==USART1)//左电机
+	{
+    left_tx_cplt=1;
+    left_ask_ts=HAL_GetTick();
+	}
+  
+  if(huart->Instance==USART2)//右电机
+	{
+    right_tx_cplt=1;
+    right_ask_ts=HAL_GetTick();
+	}
+}
 
 
 

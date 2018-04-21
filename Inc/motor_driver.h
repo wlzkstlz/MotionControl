@@ -7,9 +7,6 @@ void setMotorSpeed(int16_t Vl,int16_t Vr);
 uint8_t getMotorSpeedCmd(int16_t*vl,int16_t*vr);
 
 
-uint8_t GetMotorSpeedFb(int16_t*vl,int16_t *vr);
-
-
 void setMotorForceBySpeed(int16_t Vl,int16_t Vr);
 
 void setMotorForceByVolt(float Vl,float Vr);
@@ -50,7 +47,10 @@ void initSpeedFbCommunication();
 void SetNeedRestartUart(uint8_t ch,uint8_t need_restart);
 uint8_t GetNeedRestartUart(uint8_t ch);
 void HoldUartCommunication();
-void AskForSpeedFb(uint8_t ch);//0 for left,1 for right
+uint8_t AskForSpeedFb(uint8_t ch);//0 for left,1 for right
+
+uint8_t GetMotorSpeedFb(int16_t*vl,int16_t *vr);
+void KeepAsk4Fb();
 
 
 #endif
