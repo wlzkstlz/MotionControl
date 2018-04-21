@@ -134,7 +134,7 @@ uint8_t getMotorSpeedCmd(int16_t*vl,int16_t*vr)
 
 void cvtMotorSpeed(int16_t Vl,int16_t Vr,float *v,float *w)
 {
-	float left_v=Vl*MATH_PI*2*CAR_WHEEL_RADIUM/60.0;
+	float left_v=-Vl*MATH_PI*2*CAR_WHEEL_RADIUM/60.0;
 	float right_v=Vr*MATH_PI*2*CAR_WHEEL_RADIUM/60.0;
 	(*v)=(left_v+right_v)*0.5;
 	(*w)=(right_v-left_v)/CAR_WIDTH;
@@ -322,7 +322,7 @@ void funCloseForceMode()
   
   float f_left=0,f_right=0;//本质是模拟输出电压值
   GetPidForceOut(&f_left,&f_right);
-  setMotorForceByVolt(f_left,f_right);
+  setMotorForceByVolt(-f_left,f_right);
   
   HAL_Delay(5);
   
