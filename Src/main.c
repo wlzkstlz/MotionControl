@@ -94,7 +94,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(GPIO_IO1_GPIO_Port, GPIO_IO1_Pin, GPIO_PIN_SET);
   
-  HAL_Delay(200);
+  HAL_Delay(4000);
 	initMotorDriver();
 
 	if(HAL_GPIO_ReadPin(GPIO_IO2_GPIO_Port,GPIO_IO2_Pin))
@@ -103,7 +103,7 @@ int main(void)
 	}
   else
   {
-    SetControlMode(FORCE_OPEN_MODE);
+    SetControlMode(FORCE_CLOSE_MODE);
   }
   /* USER CODE END 2 */
 
@@ -185,8 +185,8 @@ PUTCHAR_PROTOTYPE
 {  
   /* Place your implementation of fputc here */  
   /* e.g. write a character to the USART1 and Loop until the end of transmission */  
-  //HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF); 
-	ITM_SendChar(ch);	
+  HAL_UART_Transmit(&huart4, (uint8_t *)&ch, 1, 0xFFFF); 
+	//ITM_SendChar(ch);	
 	return ch;  
 }
 /* USER CODE END 4 */

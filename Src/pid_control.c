@@ -11,8 +11,8 @@ void ResetPidControler(void)
 }
 
 //speed loop
-#define PID_SPEED_KP 1
-#define PID_SPEED_KI 0
+#define PID_SPEED_KP 0.2//1
+#define PID_SPEED_KI 0.0002
 #define PID_SPEED_KD 0
 
 float g_speed_errs[3]={0,0,0};
@@ -45,8 +45,8 @@ void SetSpeedControlValue(float value)
 
 
 //yaw_vel loop
-#define PID_YAW_VEL_KP 1
-#define PID_YAW_VEL_KI 0
+#define PID_YAW_VEL_KP 0.1//1
+#define PID_YAW_VEL_KI 0.0002
 #define PID_YAW_VEL_KD 0
 
 float g_yaw_vel_errs[3]={0,0,0};

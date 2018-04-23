@@ -202,20 +202,20 @@ void RunMotorControlMachine(MotorControlMode mode)
   KeepAsk4Fb();
   
   //【debug】
-  int16_t debug_vl=0,debug_vr=0;
-  static uint32_t debug_fb_ts=0;
-  if(GetMotorSpeedFb(&debug_vl,&debug_vr))//闭环模式时此语句需要注释掉，否则逻辑不对
-  {
-    uint32_t fb_period=HAL_GetTick()-debug_fb_ts;
-    debug_fb_ts=HAL_GetTick();
-    
-    printf("vl=%d,vr=%d,period=%dms\n",debug_vl,debug_vr,fb_period);
-  }
+//  int16_t debug_vl=0,debug_vr=0;
+//  static uint32_t debug_fb_ts=0;
+//  if(GetMotorSpeedFb(&debug_vl,&debug_vr))//闭环模式时此语句需要注释掉，否则逻辑不对
+//  {
+//    uint32_t fb_period=HAL_GetTick()-debug_fb_ts;
+//    debug_fb_ts=HAL_GetTick();
+//    
+//    //printf("vl=%d,vr=%d,period=%dms\n",debug_vl,debug_vr,fb_period);
+//  }
   
-  static uint32_t state_machine_ts=0;
-  uint32_t state_machine_period=HAL_GetTick()-state_machine_ts;
-  state_machine_ts=HAL_GetTick();
-  //printf("sm_period=%dms\n",state_machine_period);
+//  static uint32_t state_machine_ts=0;
+//  uint32_t state_machine_period=HAL_GetTick()-state_machine_ts;
+//  state_machine_ts=HAL_GetTick();
+//  printf("sm_period=%dms\n",state_machine_period);
   
   //【执行状态机行为】
    switch(mode)
@@ -304,13 +304,16 @@ void funCloseForceMode()
     return;
   }
   
+  static uint8_t init_once=0;
   if(HAL_GetTick()-speed_fb_delay>50)//如果超时没有接收到速度反馈，则进入急停状态
   {
+    init_once++;
     setMotorForceBySpeed(0,0);
-    SetControlMode(EMERGENCY_MODE);
+    HAL_Delay(5);
+    if(init_once>3)
+      SetControlMode(EMERGENCY_MODE);
     return;
   }
-  
   
   
   float v_cmd=0,w_cmd=0,v_fb=0,w_fb=0;//换算指令速度和反馈速度
