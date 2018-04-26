@@ -104,15 +104,14 @@ int main(void)
   else
   {
     SetControlMode(FORCE_CLOSE_MODE);
+    //SetControlMode(SPEED_CMD_MODE);
   }
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  uint32_t motor_cmd_delay=0;
-  motor_cmd_delay=HAL_GetTick();
   
-  printf("program start...\n");
+  //printf("program start...\n");
   while (1)
   { 
     RunMotorControlMachine(GetControlMode());

@@ -43,7 +43,6 @@ void funEmergencyMode();
 
 
 //ËÙ¶È·´À¡
-void initSpeedFbCommunication();
 void SetNeedRestartUart(uint8_t ch,uint8_t need_restart);
 uint8_t GetNeedRestartUart(uint8_t ch);
 void HoldUartCommunication();

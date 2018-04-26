@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <math.h>
 
+
+#define SMOOTH_THRESHOLD  1.0
+
 void ResetPidControler(void)
 {
 	ResetSpeedControl();
@@ -10,9 +13,11 @@ void ResetPidControler(void)
 	ResetLimitPa();
 }
 
+
+
 //speed loop
-#define PID_SPEED_KP 0.2//1
-#define PID_SPEED_KI 0.0002
+#define PID_SPEED_KP 10
+#define PID_SPEED_KI 0.4
 #define PID_SPEED_KD 0
 
 float g_speed_errs[3]={0,0,0};
@@ -45,8 +50,8 @@ void SetSpeedControlValue(float value)
 
 
 //yaw_vel loop
-#define PID_YAW_VEL_KP 0.1//1
-#define PID_YAW_VEL_KI 0.0002
+#define PID_YAW_VEL_KP 4
+#define PID_YAW_VEL_KI 0
 #define PID_YAW_VEL_KD 0
 
 float g_yaw_vel_errs[3]={0,0,0};
@@ -134,6 +139,9 @@ uint32_t g_right_start_cool_12tq_t=0;
 uint32_t g_right_start_cool_11tq_t=0;
 
 
+
+float g_Pre_F_left=0;
+float g_Pre_F_right=0;
 void ExeMotionControl(float Vcmd,float Wcmd,float Vfb,float Wfb)
 {
 	//偏差换算
@@ -186,8 +194,21 @@ void ExeMotionControl(float Vcmd,float Wcmd,float Vfb,float Wfb)
 			left_f=left_f-adjust;
 		}
 	}
+  
+  //圆滑力变化
+  if(abs(left_f-g_Pre_F_left)>SMOOTH_THRESHOLD)
+  {
+    left_f=left_f-g_Pre_F_left>0?g_Pre_F_left+SMOOTH_THRESHOLD:g_Pre_F_left-SMOOTH_THRESHOLD;
+  }
+  if(abs(right_f-g_Pre_F_right)>SMOOTH_THRESHOLD)
+  {
+    right_f=right_f-g_Pre_F_right>0?g_Pre_F_right+SMOOTH_THRESHOLD:g_Pre_F_right-SMOOTH_THRESHOLD;
+  }
+  g_Pre_F_left=left_f;
+  g_Pre_F_right=right_f;
 	
-	//重新计算差分力
+	//重新计算合力和差分力
+  g_cur_F=right_f+left_f;
 	g_cur_delta_F=right_f-left_f;
 	
 	//输出力控制
@@ -196,6 +217,8 @@ void ExeMotionControl(float Vcmd,float Wcmd,float Vfb,float Wfb)
   
   
   UpdateLimitState();
+  
+  printf("l_limit=%f,r_limit=%f  \n",g_cur_left_f_limit,g_cur_right_f_limit);
 }
 
 

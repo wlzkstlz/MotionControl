@@ -51,8 +51,6 @@ void initMotorDriver(void)
   SetMotorEn(1,1);
   
   ResetPidControler();
-  
-  initSpeedFbCommunication();
 }
 	
 void setMotorSpeed(int16_t Vl,int16_t Vr)
@@ -134,8 +132,8 @@ uint8_t getMotorSpeedCmd(int16_t*vl,int16_t*vr)
 
 void cvtMotorSpeed(int16_t Vl,int16_t Vr,float *v,float *w)
 {
-	float left_v=-Vl*MATH_PI*2*CAR_WHEEL_RADIUM/60.0;
-	float right_v=Vr*MATH_PI*2*CAR_WHEEL_RADIUM/60.0;
+	float left_v=-Vl/16.0*MATH_PI*2.0*CAR_WHEEL_RADIUM/60.0;
+	float right_v=Vr/16.0*MATH_PI*2.0*CAR_WHEEL_RADIUM/60.0;
 	(*v)=(left_v+right_v)*0.5;
 	(*w)=(right_v-left_v)/CAR_WIDTH;
 	return;
@@ -202,15 +200,22 @@ void RunMotorControlMachine(MotorControlMode mode)
   KeepAsk4Fb();
   
   //【debug】
-//  int16_t debug_vl=0,debug_vr=0;
-//  static uint32_t debug_fb_ts=0;
-//  if(GetMotorSpeedFb(&debug_vl,&debug_vr))//闭环模式时此语句需要注释掉，否则逻辑不对
-//  {
-//    uint32_t fb_period=HAL_GetTick()-debug_fb_ts;
-//    debug_fb_ts=HAL_GetTick();
-//    
-//    //printf("vl=%d,vr=%d,period=%dms\n",debug_vl,debug_vr,fb_period);
-//  }
+  int16_t debug_vl=0,debug_vr=0;
+  static uint32_t debug_fb_ts=0;
+  
+  if(mode!=FORCE_CLOSE_MODE)
+  {
+    if(GetMotorSpeedFb(&debug_vl,&debug_vr))//闭环模式时此语句需要注释掉，否则逻辑不对
+    {
+      uint32_t fb_period=HAL_GetTick()-debug_fb_ts;
+      debug_fb_ts=HAL_GetTick();
+      
+      float v=0,w=0;
+      cvtMotorSpeed(debug_vl,debug_vr,&v,&w);
+      
+      printf("v=%f,w=%f \n",v,w);
+    }
+  }
   
 //  static uint32_t state_machine_ts=0;
 //  uint32_t state_machine_period=HAL_GetTick()-state_machine_ts;
@@ -282,6 +287,12 @@ void funOpenForceMode()
 int16_t g_vl_cmd,g_vr_cmd;
 void funCloseForceMode()
 {
+  //debug
+  static uint32_t db_ts=0;
+  printf("close period=%dms\n",HAL_GetTick()-db_ts);
+  db_ts=HAL_GetTick();
+  
+  
   static uint32_t speed_cmd_delay=0,speed_fb_delay=0;
   if(getMotorSpeedCmd(&g_vl_cmd,&g_vr_cmd))
   {
@@ -320,12 +331,20 @@ void funCloseForceMode()
   cvtMotorSpeed(g_vl_cmd,g_vr_cmd,&v_cmd,&w_cmd);
   cvtMotorSpeed(vl_fb,vr_fb,&v_fb,&w_fb);
   
+  //debug
+  #ifdef DEBUG_VEL_ONLY
+  w_cmd=0;
+  w_fb=0;
+  #endif
+  
   ExeMotionControl(v_cmd,w_cmd,v_fb,w_fb);
   
   
   float f_left=0,f_right=0;//本质是模拟输出电压值
   GetPidForceOut(&f_left,&f_right);
   setMotorForceByVolt(-f_left,f_right);
+  
+  printf("vfb=%f,wfb=%f, vol l=%f,r=%f \n",v_fb,w_fb,f_left,f_right);
   
   HAL_Delay(5);
   
@@ -352,6 +371,8 @@ void funSpeedCmdMode()
   
   HAL_Delay(5);
 }
+
+
 void funEmergencyMode()
 {
   setMotorSpeed(0,0);
@@ -385,12 +406,6 @@ uint8_t AskForSpeedFb(uint8_t ch)
 
 uint8_t left_rev_byte=0;
 uint8_t right_rev_byte=0;//串口接收数据
-
-void initSpeedFbCommunication()//初始化串口接收
-{
-//  HAL_UART_Receive_IT(&huart1,&left_rev_byte,1);
-//  HAL_UART_Receive_IT(&huart2,&right_rev_byte,1);
-}
 
 uint8_t uart1_need_restart=1;
 uint8_t uart2_need_restart=1;
