@@ -99,12 +99,36 @@ void setMotorForceBySpeed(int16_t Vl,int16_t Vr)
 	DAC8562_SetData(MOTOR_DAC_CH_R,dac_r);	
 }
 
+#define SPEED_CMD_SMOOTH_THR  1500
+int16_t g_Pre_VL_cmd=0;
+int16_t g_Pre_VR_cmd=0;
 void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 {
 	if(hcan->pRxMsg->StdId==0x30)
 	{
-		memcpy(&gSpeedCmdVl,&hcan->pRxMsg->Data[0],2);
-		memcpy(&gSpeedCmdVr,&hcan->pRxMsg->Data[2],2);
+    int16_t vl=0;
+    int16_t vr=0;
+    memcpy(&vl,&hcan->pRxMsg->Data[0],2);
+		memcpy(&vr,&hcan->pRxMsg->Data[2],2);
+    
+    
+    //圆滑速度指令变化
+    if(abs(vl-g_Pre_VL_cmd)>SPEED_CMD_SMOOTH_THR)
+    {
+      vl=vl-g_Pre_VL_cmd>0?g_Pre_VL_cmd+SPEED_CMD_SMOOTH_THR:g_Pre_VL_cmd-SPEED_CMD_SMOOTH_THR;
+    }
+    if(abs(vr-g_Pre_VR_cmd)>SPEED_CMD_SMOOTH_THR)
+    {
+      vr=vr-g_Pre_VR_cmd>0?g_Pre_VR_cmd+SPEED_CMD_SMOOTH_THR:g_Pre_VR_cmd-SPEED_CMD_SMOOTH_THR;
+    }
+    g_Pre_VL_cmd=vl;
+    g_Pre_VR_cmd=vr;
+    
+    gSpeedCmdVl=vl;
+    gSpeedCmdVr=vr;
+    
+//		memcpy(&gSpeedCmdVl,&hcan->pRxMsg->Data[0],2);
+//		memcpy(&gSpeedCmdVr,&hcan->pRxMsg->Data[2],2);
 		gSpeedCmdNew=1;
 	}
 

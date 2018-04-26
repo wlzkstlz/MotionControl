@@ -50,8 +50,8 @@ void SetSpeedControlValue(float value)
 
 
 //yaw_vel loop
-#define PID_YAW_VEL_KP 4
-#define PID_YAW_VEL_KI 0
+#define PID_YAW_VEL_KP 1
+#define PID_YAW_VEL_KI 0.2
 #define PID_YAW_VEL_KD 0
 
 float g_yaw_vel_errs[3]={0,0,0};
