@@ -561,6 +561,11 @@
               <FileType>1</FileType>
               <FilePath>..\Src\crc16_modbus.c</FilePath>
             </File>
+            <File>
+              <FileName>hh_debug.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\hh_debug.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

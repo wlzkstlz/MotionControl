@@ -3,7 +3,7 @@
 
 #include "stm32f1xx_hal.h"
 
-#define	PID_FULL_F	3.3    //10.0
+
 
 void ResetPidControler(void);
 

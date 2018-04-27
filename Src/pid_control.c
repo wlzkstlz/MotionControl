@@ -3,8 +3,10 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "hh_debug.h"
 
-#define SMOOTH_THRESHOLD  1.0
+
+#define SMOOTH_THRESHOLD  0.3//1.0
 
 void ResetPidControler(void)
 {
@@ -16,19 +18,26 @@ void ResetPidControler(void)
 
 
 //speed loop
-#define PID_SPEED_KP 10
-#define PID_SPEED_KI 0.4
-#define PID_SPEED_KD 0
+#define PID_SPEED_KP 7
+#define PID_SPEED_KI 0.3
+#define PID_SPEED_KD 1.5
 
 float g_speed_errs[3]={0,0,0};
 float g_cur_F=0;
+
+#define PID_SPEED_LP_A  0.3
+float g_Speed_Diff=0;
 float RunSpeedControl(float err)
 {
+  //误差序列维护
 	g_speed_errs[0]=g_speed_errs[1];
 	g_speed_errs[1]=g_speed_errs[2];
 	g_speed_errs[2]=err;
-	
-	float delta=PID_SPEED_KP*(g_speed_errs[2]-g_speed_errs[1])+PID_SPEED_KI*g_speed_errs[2]+PID_SPEED_KD*(g_speed_errs[2]-2*g_speed_errs[1]+g_speed_errs[0]);
+  
+  //微分项低通滤波
+  g_Speed_Diff=(1-PID_SPEED_LP_A)*g_Speed_Diff+PID_SPEED_LP_A*(g_speed_errs[2]-2*g_speed_errs[1]+g_speed_errs[0]);
+  
+	float delta=PID_SPEED_KP*(g_speed_errs[2]-g_speed_errs[1])+PID_SPEED_KI*g_speed_errs[2]+PID_SPEED_KD*g_Speed_Diff;
 	g_cur_F+=delta;
 	return g_cur_F;
 }
@@ -83,13 +92,17 @@ void SetYawVelControlValue(float value)
 float g_cur_right_F=0;
 float g_cur_left_F=0;
 
-float g_cur_right_f_limit=PID_FULL_F;
-float g_cur_left_f_limit=PID_FULL_F;
+
 
 //Force Limit
+#define MOTOR_DRIVER_MAX_CURRENT  80.0 //80A 峰值
+#define MOTOR_DRIVER_NORM_CURRENT 20.0//26.0//39.2 //39.2A 峰值
 
+#define MOTOR_DRIVER_A_PER_V  (2000.0*16.0/300.0/10.0)//有效值
 
-#define	OVERTQ_SCALE_OFFSET	0.1
+#define	PID_FULL_F	(MOTOR_DRIVER_NORM_CURRENT/(MOTOR_DRIVER_A_PER_V*1.414))//3.0//3.3    //10.0  1.724
+
+#define	OVERTQ_SCALE_OFFSET	0.2
 #define	OVERFULLTQ_SCALE	(3.0-OVERTQ_SCALE_OFFSET)
 #define	OVER25TQ_SCALE	(2.5-OVERTQ_SCALE_OFFSET)
 #define	OVER20TQ_SCALE	(2.0-OVERTQ_SCALE_OFFSET)
@@ -111,6 +124,10 @@ float g_cur_left_f_limit=PID_FULL_F;
 #define	OVER15TQ_TIME	(30000-OVERTQ_TIME_OFFSET)
 #define	OVER12TQ_TIME	(60000-OVERTQ_TIME_OFFSET)
 #define	OVER11TQ_TIME	(120000-OVERTQ_TIME_OFFSET)
+
+
+float g_cur_right_f_limit=PID_FULL_F;
+float g_cur_left_f_limit=PID_FULL_F;
 
 
 uint32_t g_left_start_heat_25tq_t=0;
@@ -153,7 +170,7 @@ void ExeMotionControl(float Vcmd,float Wcmd,float Vfb,float Wfb)
 	RunYawVelControl(yawvel_err);
 	
 	//合力限制
-	if(abs(g_cur_F)>g_cur_right_f_limit+g_cur_left_f_limit)
+	if(fabs(g_cur_F)>g_cur_right_f_limit+g_cur_left_f_limit)
 	{
 		g_cur_F=g_cur_F>0?(g_cur_right_f_limit+g_cur_left_f_limit):-(g_cur_right_f_limit+g_cur_left_f_limit);
 	}
@@ -164,9 +181,9 @@ void ExeMotionControl(float Vcmd,float Wcmd,float Vfb,float Wfb)
 	right_f=(g_cur_F+g_cur_delta_F)/2;
 	
 	//分力限制
-	if(abs(left_f)>g_cur_left_f_limit&&abs(left_f)-g_cur_left_f_limit>abs(right_f)-g_cur_right_f_limit)
+	if(fabs(left_f)>g_cur_left_f_limit&&fabs(left_f)-g_cur_left_f_limit>fabs(right_f)-g_cur_right_f_limit)
 	{
-		float adjust=abs(left_f)-g_cur_left_f_limit;
+		float adjust=fabs(left_f)-g_cur_left_f_limit;
 		if(left_f>0)
 		{
 			left_f=left_f-adjust;
@@ -179,9 +196,9 @@ void ExeMotionControl(float Vcmd,float Wcmd,float Vfb,float Wfb)
 			right_f=right_f-adjust;
 		}
 	}
-	else 	if(abs(right_f)>g_cur_right_f_limit&&abs(right_f)-g_cur_right_f_limit>abs(left_f)-g_cur_left_f_limit)
+	else 	if(fabs(right_f)>g_cur_right_f_limit&&fabs(right_f)-g_cur_right_f_limit>fabs(left_f)-g_cur_left_f_limit)
 	{
-		float adjust=abs(right_f)-g_cur_right_f_limit;
+		float adjust=fabs(right_f)-g_cur_right_f_limit;
 		if(right_f>0)
 		{
 			right_f=right_f-adjust;
@@ -196,11 +213,11 @@ void ExeMotionControl(float Vcmd,float Wcmd,float Vfb,float Wfb)
 	}
   
   //圆滑力变化
-  if(abs(left_f-g_Pre_F_left)>SMOOTH_THRESHOLD)
+  if(fabs(left_f-g_Pre_F_left)>SMOOTH_THRESHOLD)
   {
     left_f=left_f-g_Pre_F_left>0?g_Pre_F_left+SMOOTH_THRESHOLD:g_Pre_F_left-SMOOTH_THRESHOLD;
   }
-  if(abs(right_f-g_Pre_F_right)>SMOOTH_THRESHOLD)
+  if(fabs(right_f-g_Pre_F_right)>SMOOTH_THRESHOLD)
   {
     right_f=right_f-g_Pre_F_right>0?g_Pre_F_right+SMOOTH_THRESHOLD:g_Pre_F_right-SMOOTH_THRESHOLD;
   }
@@ -217,6 +234,13 @@ void ExeMotionControl(float Vcmd,float Wcmd,float Vfb,float Wfb)
   
   
   UpdateLimitState();
+  
+  
+  //debug
+  debugSetLimit(0,g_cur_left_f_limit);
+  debugSetLimit(1,g_cur_right_f_limit);
+  debugSetCurOut(0,g_cur_left_F);
+  debugSetCurOut(1,g_cur_right_F);
   
   printf("l_limit=%f,r_limit=%f  \n",g_cur_left_f_limit,g_cur_right_f_limit);
 }
@@ -277,7 +301,7 @@ void UpdateLimitState(void)
 	
 	
 	//【更新加热、冷却开始时间】
-	if(abs(g_cur_left_F)<OVER11TQ_F)
+	if(fabs(g_cur_left_F)<OVER11TQ_F)
 	{
 		g_left_start_heat_25tq_t=HAL_GetTick();
 		g_left_start_heat_20tq_t=HAL_GetTick();
@@ -285,7 +309,7 @@ void UpdateLimitState(void)
 		g_left_start_heat_12tq_t=HAL_GetTick();
 		g_left_start_heat_11tq_t=HAL_GetTick();
 	}
-	else 	if(abs(g_cur_left_F)<OVER12TQ_F)
+	else 	if(fabs(g_cur_left_F)<OVER12TQ_F)
 	{
 		g_left_start_heat_25tq_t=HAL_GetTick();
 		g_left_start_heat_20tq_t=HAL_GetTick();
@@ -294,7 +318,7 @@ void UpdateLimitState(void)
 
 		g_left_start_cool_11tq_t=HAL_GetTick();
 	}
-	else 	if(abs(g_cur_left_F)<OVER15TQ_F)
+	else 	if(fabs(g_cur_left_F)<OVER15TQ_F)
 	{
 		g_left_start_heat_25tq_t=HAL_GetTick();
 		g_left_start_heat_20tq_t=HAL_GetTick();
@@ -303,7 +327,7 @@ void UpdateLimitState(void)
 		g_left_start_cool_12tq_t=HAL_GetTick();
 		g_left_start_cool_11tq_t=HAL_GetTick();
 	}
-	else 	if(abs(g_cur_left_F)<OVER20TQ_F)
+	else 	if(fabs(g_cur_left_F)<OVER20TQ_F)
 	{
 		g_left_start_heat_25tq_t=HAL_GetTick();
 		g_left_start_heat_20tq_t=HAL_GetTick();
@@ -312,7 +336,7 @@ void UpdateLimitState(void)
 		g_left_start_cool_12tq_t=HAL_GetTick();
 		g_left_start_cool_11tq_t=HAL_GetTick();
 	}
-	else 	if(abs(g_cur_left_F)<OVER25TQ_F)
+	else 	if(fabs(g_cur_left_F)<OVER25TQ_F)
 	{
 		g_left_start_heat_25tq_t=HAL_GetTick();
 		
@@ -386,7 +410,7 @@ void UpdateLimitState(void)
 	
 	
 	//【更新加热、冷却开始时间】
-	if(abs(g_cur_right_F)<OVER11TQ_F)
+	if(fabs(g_cur_right_F)<OVER11TQ_F)
 	{
 		g_right_start_heat_25tq_t=HAL_GetTick();
 		g_right_start_heat_20tq_t=HAL_GetTick();
@@ -394,7 +418,7 @@ void UpdateLimitState(void)
 		g_right_start_heat_12tq_t=HAL_GetTick();
 		g_right_start_heat_11tq_t=HAL_GetTick();
 	}
-	else 	if(abs(g_cur_right_F)<OVER12TQ_F)
+	else 	if(fabs(g_cur_right_F)<OVER12TQ_F)
 	{
 		g_right_start_heat_25tq_t=HAL_GetTick();
 		g_right_start_heat_20tq_t=HAL_GetTick();
@@ -403,7 +427,7 @@ void UpdateLimitState(void)
 
 		g_right_start_cool_11tq_t=HAL_GetTick();
 	}
-	else 	if(abs(g_cur_right_F)<OVER15TQ_F)
+	else 	if(fabs(g_cur_right_F)<OVER15TQ_F)
 	{
 		g_right_start_heat_25tq_t=HAL_GetTick();
 		g_right_start_heat_20tq_t=HAL_GetTick();
@@ -412,7 +436,7 @@ void UpdateLimitState(void)
 		g_right_start_cool_12tq_t=HAL_GetTick();
 		g_right_start_cool_11tq_t=HAL_GetTick();
 	}
-	else 	if(abs(g_cur_right_F)<OVER20TQ_F)
+	else 	if(fabs(g_cur_right_F)<OVER20TQ_F)
 	{
 		g_right_start_heat_25tq_t=HAL_GetTick();
 		g_right_start_heat_20tq_t=HAL_GetTick();
@@ -421,7 +445,7 @@ void UpdateLimitState(void)
 		g_right_start_cool_12tq_t=HAL_GetTick();
 		g_right_start_cool_11tq_t=HAL_GetTick();
 	}
-	else 	if(abs(g_cur_right_F)<OVER25TQ_F)
+	else 	if(fabs(g_cur_right_F)<OVER25TQ_F)
 	{
 		g_right_start_heat_25tq_t=HAL_GetTick();
 		

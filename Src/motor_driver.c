@@ -7,6 +7,9 @@
 #include "stm32f1xx_hal.h"
 #include "pid_control.h"
 #include "crc16_modbus.h"
+#include "hh_debug.h"
+
+#include "math.h"
 
 #define MOTOR_DRIVER_MIDVALUE	32767
 #define MOTOR_DRIVER_FULLVALUE	65535
@@ -14,6 +17,8 @@
 
 #define	MOTOR_DAC_CH_L	1//0
 #define	MOTOR_DAC_CH_R	0//1
+
+#define SPEED_CMD_SMOOTH_THR  1500
 
 
 static CanRxMsgTypeDef	RxMessage;
@@ -70,7 +75,7 @@ void setMotorSpeed(int16_t Vl,int16_t Vr)
 #define MAX_OUT_VOLT 10.0
 void setMotorForceByVolt(float Vl,float Vr)
 {
-  if(abs(Vl)>MAX_OUT_VOLT||abs(Vr)>MAX_OUT_VOLT)
+  if(fabs(Vl)>MAX_OUT_VOLT||fabs(Vr)>MAX_OUT_VOLT)
   return;
   
   uint16_t dac_l=MOTOR_DRIVER_MIDVALUE;
@@ -99,41 +104,32 @@ void setMotorForceBySpeed(int16_t Vl,int16_t Vr)
 	DAC8562_SetData(MOTOR_DAC_CH_R,dac_r);	
 }
 
-#define SPEED_CMD_SMOOTH_THR  1500
+
 int16_t g_Pre_VL_cmd=0;
 int16_t g_Pre_VR_cmd=0;
 void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 {
 	if(hcan->pRxMsg->StdId==0x30)
 	{
-    int16_t vl=0;
-    int16_t vr=0;
-    memcpy(&vl,&hcan->pRxMsg->Data[0],2);
-		memcpy(&vr,&hcan->pRxMsg->Data[2],2);
-    
+    memcpy(&gSpeedCmdVl,&hcan->pRxMsg->Data[0],2);
+		memcpy(&gSpeedCmdVr,&hcan->pRxMsg->Data[2],2);
     
     //圆滑速度指令变化
-    if(abs(vl-g_Pre_VL_cmd)>SPEED_CMD_SMOOTH_THR)
+    if(abs(gSpeedCmdVl-g_Pre_VL_cmd)>SPEED_CMD_SMOOTH_THR)
     {
-      vl=vl-g_Pre_VL_cmd>0?g_Pre_VL_cmd+SPEED_CMD_SMOOTH_THR:g_Pre_VL_cmd-SPEED_CMD_SMOOTH_THR;
+      gSpeedCmdVl=gSpeedCmdVl-g_Pre_VL_cmd>0?g_Pre_VL_cmd+SPEED_CMD_SMOOTH_THR:g_Pre_VL_cmd-SPEED_CMD_SMOOTH_THR;
     }
-    if(abs(vr-g_Pre_VR_cmd)>SPEED_CMD_SMOOTH_THR)
+    if(abs(gSpeedCmdVr-g_Pre_VR_cmd)>SPEED_CMD_SMOOTH_THR)
     {
-      vr=vr-g_Pre_VR_cmd>0?g_Pre_VR_cmd+SPEED_CMD_SMOOTH_THR:g_Pre_VR_cmd-SPEED_CMD_SMOOTH_THR;
+      gSpeedCmdVr=gSpeedCmdVr-g_Pre_VR_cmd>0?g_Pre_VR_cmd+SPEED_CMD_SMOOTH_THR:g_Pre_VR_cmd-SPEED_CMD_SMOOTH_THR;
     }
-    g_Pre_VL_cmd=vl;
-    g_Pre_VR_cmd=vr;
-    
-    gSpeedCmdVl=vl;
-    gSpeedCmdVr=vr;
-    
-//		memcpy(&gSpeedCmdVl,&hcan->pRxMsg->Data[0],2);
-//		memcpy(&gSpeedCmdVr,&hcan->pRxMsg->Data[2],2);
+    g_Pre_VL_cmd=gSpeedCmdVl;
+    g_Pre_VR_cmd=gSpeedCmdVr;
+
 		gSpeedCmdNew=1;
 	}
 
-	HAL_CAN_Receive_IT(hcan,CAN_FIFO0);
-		
+	HAL_CAN_Receive_IT(hcan,CAN_FIFO0);		
 }
 
 
@@ -370,6 +366,16 @@ void funCloseForceMode()
   
   printf("vfb=%f,wfb=%f, vol l=%f,r=%f \n",v_fb,w_fb,f_left,f_right);
   
+  if(fabs(f_left)>fabs(debugGetMaxOut(0)))
+  {
+    debugSetMaxOut(0,f_left);
+  }
+  
+    if(fabs(f_right)>fabs(debugGetMaxOut(1)))
+  {
+    debugSetMaxOut(1,f_right);
+  }
+  
   HAL_Delay(5);
   
   //todo 未完待续
@@ -399,10 +405,14 @@ void funSpeedCmdMode()
 
 void funEmergencyMode()
 {
+  //debug
+  printf("max left=%f , max right=%f  \n",debugGetMaxOut(0),debugGetMaxOut(1));
+  printf("cur left=%f , cur right=%f  \n",debugGetCurOut(0),debugGetCurOut(1));
+  printf("limit left=%f , limit right=%f \n",debugGetLimit(0),debugGetLimit(1));
   setMotorSpeed(0,0);
   SetMotorEn(0,0);
   SetMotorEn(1,0);
-  HAL_Delay(10);
+  HAL_Delay(100);
 }
 
 
