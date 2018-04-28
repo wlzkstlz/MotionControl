@@ -6,7 +6,7 @@
 #include "hh_debug.h"
 
 
-#define SMOOTH_THRESHOLD  0.3//1.0
+#define SMOOTH_THRESHOLD  1.0//0.3//1.0
 
 void ResetPidControler(void)
 {
@@ -95,8 +95,8 @@ float g_cur_left_F=0;
 
 
 //Force Limit
-#define MOTOR_DRIVER_MAX_CURRENT  80.0 //80A 峰值
-#define MOTOR_DRIVER_NORM_CURRENT 20.0//26.0//39.2 //39.2A 峰值
+#define MOTOR_DRIVER_MAX_CURRENT  150.0//80.0 //80A 峰值
+#define MOTOR_DRIVER_NORM_CURRENT 40.0//20.0//26.0//39.2 //39.2A 峰值
 
 #define MOTOR_DRIVER_A_PER_V  (2000.0*16.0/300.0/10.0)//有效值
 
