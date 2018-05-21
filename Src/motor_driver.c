@@ -194,6 +194,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)//ËÅ·þ±¨¾¯ÖÐ¶Ï
     SetMotorEn(0,0);
     SetMotorEn(1,0);
     SetControlMode(EMERGENCY_MODE);
+    debugSetErrCode(0x01);
   }
 }
 
@@ -342,7 +343,10 @@ void funCloseForceMode()
     setMotorForceBySpeed(0,0);
     HAL_Delay(5);
     if(init_once>3)
+    {
       SetControlMode(EMERGENCY_MODE);
+      debugSetErrCode(0x02);
+    }
     return;
   }
   
@@ -409,6 +413,7 @@ void funEmergencyMode()
   printf("max left=%f , max right=%f  \n",debugGetMaxOut(0),debugGetMaxOut(1));
   printf("cur left=%f , cur right=%f  \n",debugGetCurOut(0),debugGetCurOut(1));
   printf("limit left=%f , limit right=%f \n",debugGetLimit(0),debugGetLimit(1));
+  printf("errCode=%d \n",debugGetErrcode());
   setMotorSpeed(0,0);
   SetMotorEn(0,0);
   SetMotorEn(1,0);

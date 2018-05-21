@@ -1,6 +1,7 @@
 #include "hh_debug.h"
 
 
+
 float debugMaxOutL=0;
 float debugMaxOutR=0;
 void debugSetMaxOut(int id,float out)
@@ -68,4 +69,14 @@ float debugGetCurOut(int id)
   {
     return debugCurOutR;
   }
+}
+
+uint8_t debugErrcode=0;
+void debugSetErrCode(uint8_t id)
+{
+  debugErrcode=debugErrcode|id;
+}
+uint8_t debugGetErrcode()
+{
+  return debugErrcode;
 }
